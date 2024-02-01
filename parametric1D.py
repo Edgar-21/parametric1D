@@ -98,25 +98,31 @@ def main():
 
 	innerBuildDict = {
 		            "sol":{'thickness':5,'material':'vacuum','cell_id':1},
-		            "fw":{'thickness':4,'material': fwMat,'cell_id':2},
-		            "hts":{'thickness':5, 'material':hts,'cell_id':3},
-		            "gap1":{'thickness':4,'material':'vacuum','cell_id':4},
-		            "vv":{'thickness':5,'material':vacVesselMat,'cell_id':5},
-		            "gap2":{'thickness':46,'material':'vacuum','cell_id':6},
-		            "coils":{'thickness':52,'material':coilMat,'cell_id':7}
+		            "fwCellTally":{'thickness':1,'material': fwMat,'cell_id':2},
+		            "fw":{'thickness':4,'material': fwMat,'cell_id':3},
+		            "hts":{'thickness':5, 'material':hts,'cell_id':4},
+		            "gap1":{'thickness':4,'material':'vacuum','cell_id':5},
+		            "vvCellTally":{'thickness':1,'material':vacVesselMat,'cell_id':6},
+		            "vv":{'thickness':9,'material':vacVesselMat,'cell_id':7},
+		            "gap2":{'thickness':46,'material':'vacuum','cell_id':8},
+		            "coilCellTally":{'thickness':1,'material':coilMat,'cell_id':9},
+		            "coils":{'thickness':51,'material':coilMat,'cell_id':10}
 		            }
 
 	outerBuildDict = {
-		            "sol":{'thickness':5,'material':'vacuum','cell_id':8},
-		            "fw":{'thickness':4,'material': fwMat,'cell_id':9},
-		            "hts":{'thickness':5, 'material':hts,'cell_id':10},
-		            "gap1":{'thickness':4,'material':'vacuum','cell_id':11},
-		            "vv":{'thickness':5,'material':vacVesselMat,'cell_id':12},
-		            "gap2":{'thickness':46,'material':'vacuum','cell_id':13},
-		            "coils":{'thickness':52,'material':coilMat,'cell_id':14}
+		            "sol":{'thickness':5,'material':'vacuum','cell_id':11},
+		            "fwCellTally":{'thickness':1,'material': fwMat,'cell_id':12},
+		            "fw":{'thickness':4,'material': fwMat,'cell_id':13},
+		            "hts":{'thickness':5, 'material':hts,'cell_id':14},
+		            "gap1":{'thickness':4,'material':'vacuum','cell_id':15},
+		            "vvCellTally":{'thickness':1,'material':vacVesselMat,'cell_id':16},
+		            "vv":{'thickness':9,'material':vacVesselMat,'cell_id':17},
+		            "gap2":{'thickness':46,'material':'vacuum','cell_id':18},
+		            "coilCellTally":{'thickness':1,'material':coilMat,'cell_id':19},
+		            "coils":{'thickness':51,'material':coilMat,'cell_id':20}
 		            }
 
-	geometry = buildGeometryFromDict(innerBuildDict, outerBuildDict, 750,850,20)
+	geometry, innerCells, outerCells = buildGeometryFromDict(innerBuildDict, outerBuildDict, 750,850,20)
 
 	geometry.export_to_xml()
 
@@ -140,153 +146,78 @@ def main():
 
 	settings.export_to_xml()
 
-	###########make some meshes (outer) (all these meshes are in the first cm of each layer)##############
-	fwMeshOuter = openmc.CylindricalMesh(
-		                        r_grid=np.array([fwOuterRadius,fwOuterRadius+1]),
-		                        z_grid=np.array([-height/2,height/2]),
-		                        phi_grid=  np.array([0,2*np.pi]),
-		                        name = "fw outer",
-		                        mesh_id=1
-		                            )
-
-	vvMeshOuter = openmc.CylindricalMesh(
-		                            r_grid=np.array([fwOuterRadius+outerBuildDict['fw']
-		                                             +outerBuildDict['gap1'],
-
-		                                             fwOuterRadius+outerBuildDict['fw']
-		                                             +outerBuildDict['gap1']+1]),
-		                            z_grid=np.array([-height/2,height/2]),
-		                            phi_grid=  np.array([0,2*np.pi]),
-		                            name = 'vv mesh outer',
-		                            mesh_id=2
-		                            )
-
-	coilMeshOuter = openmc.CylindricalMesh(
-		                                r_grid=np.array([fwOuterRadius+outerBuildDict['fw']
-		                                                 +outerBuildDict['gap1']
-		                                                 +outerBuildDict['vac_vessel']
-		                                                 +outerBuildDict['gap2'],
-
-		                                                 fwOuterRadius+outerBuildDict['fw']
-		                                                 +outerBuildDict['gap1']
-		                                                 +outerBuildDict['vac_vessel']
-		                                                 +outerBuildDict['gap2']+1]),
-		                                z_grid=np.array([-height/2,height/2]),
-		                                phi_grid=  np.array([0,2*np.pi]),
-		                                name = 'coil mesh outer',
-		                                mesh_id = 3
-		                                )
-
-	#make some meshes (inner)
-	fwMeshInner = openmc.CylindricalMesh(
-		                        r_grid=np.array([fwInnerRadius-1, fwInnerRadius]),
-		                        z_grid=np.array([-height/2,height/2]),
-		                        phi_grid=  np.array([0,2*np.pi]),
-		                        name = 'fw mesh inner',
-		                        mesh_id=4
-		                            )
-
-	vvMeshInner = openmc.CylindricalMesh(
-		                            r_grid=np.array([fwInnerRadius
-		                                             -innerBuildDict['fw']
-		                                             -innerBuildDict['gap1']-1,
-
-		                                             fwInnerRadius-innerBuildDict['fw']
-		                                             -innerBuildDict['gap1']]),
-		                            z_grid=np.array([-height/2,height/2]),
-		                            phi_grid= np.array([0,2*np.pi]),
-		                            name = 'vv mesh inner',
-		                            mesh_id=5
-		                            )
-
-	coilMeshInner = openmc.CylindricalMesh(
-		                                r_grid=np.array([fwInnerRadius-innerBuildDict['fw']
-		                                                 -innerBuildDict['gap1']
-		                                                 -innerBuildDict['vac_vessel']
-		                                                 -innerBuildDict['gap2']-1,
-
-		                                                fwInnerRadius-innerBuildDict['fw']
-		                                                 -innerBuildDict['gap1']
-		                                                 -innerBuildDict['vac_vessel']
-		                                                 -innerBuildDict['gap2']]),
-		                                z_grid=np.array([-height/2,height/2]),
-		                                phi_grid= np.array([0,2*np.pi]),
-		                                name = 'coil mesh inner',
-		                                mesh_id=6
-		                                )
-
 	#make some tallies
 
 	########################### FW tallies ######################
-	fwOuterMeshFilter = openmc.MeshFilter(fwMeshOuter)
-	fwInnerMeshFilter = openmc.MeshFilter(fwMeshInner)
+	fwInnerCellFilter = openmc.CellFilter(innerCells['fwCellTally'])
+	fwOuterCellFilter = openmc.CellFilter(outerCells['fwCellTally'])
 
 	#Outer FW DPA
 	fwOuterDPAtally = openmc.Tally(name="fw outer dpa tally")
-	fwOuterDPAtally.filters = [fwOuterMeshFilter]
+	fwOuterDPAtally.filters = [fwOuterCellFilter]
 	fwOuterDPAtally.nuclides = ["Fe54", "Fe56", "Fe57", "Fe58"]
 	fwOuterDPAtally.scores = ['damage-energy'] #eV/source
 
 	#inner FW DPA
 	fwInnerDPAtally = openmc.Tally(name="fw inner dpa tally")
-	fwInnerDPAtally.filters = [fwInnerMeshFilter]
+	fwInnerDPAtally.filters = [fwInnerCellFilter]
 	fwInnerDPAtally.nuclides = ["Fe54", "Fe56", "Fe57", "Fe58"]
 	fwInnerDPAtally.scores = ['damage-energy'] #eV/source
 
 	################### VV tallies ############################
-	vvOuterMeshFilter = openmc.MeshFilter(vvMeshOuter)
-	vvInnerMeshFilter = openmc.MeshFilter(vvMeshInner)
+	vvOuterCellFilter = openmc.CellFilter(outerCells['vvCellTally'])
+	vvInnerCellFilter = openmc.MeshFilter(innerCells['vvCellTally'])
 
 	#Outer vv DPA
 	vvOuterDPAtally = openmc.Tally(name="vv outer dpa tally")
-	vvOuterDPAtally.filters = [vvOuterMeshFilter]
+	vvOuterDPAtally.filters = [vvOuterCellFilter]
 	vvOuterDPAtally.nuclides = ["Fe54", "Fe56", "Fe57", "Fe58"]
 	vvOuterDPAtally.scores = ['damage-energy'] #eV/source
 
 	#inner vv DPA
 	vvInnerDPAtally = openmc.Tally(name="vv inner dpa tally")
-	vvInnerDPAtally.filters = [vvInnerMeshFilter]
+	vvInnerDPAtally.filters = [vvInnerCellFilter]
 	vvInnerDPAtally.nuclides = ["Fe54", "Fe56", "Fe57", "Fe58"]
 	vvInnerDPAtally.scores = ['damage-energy'] #eV/source
 
 	#Outer vv He production
 	vvOuterHetally = openmc.Tally(name='vv outer He tally')
-	vvOuterHetally.filters = [vvOuterMeshFilter]
+	vvOuterHetally.filters = [vvOuterCellFilter]
 	vvOuterHetally.scores = ['He3-production', 'He4-production'] #particles/source
 
 	#Inner vv He production
 	vvInnerHetally = openmc.Tally(name='vv inner He tally')
-	vvInnerHetally.filters = [vvInnerMeshFilter]
+	vvInnerHetally.filters = [vvInnerCellFilter]
 	vvInnerHetally.scores = ['He3-production', 'He4-production'] #particles/source
 
 	###################### Coil Tallies #########################
-	coilOuterMeshFilter = openmc.MeshFilter(coilMeshOuter)
-	coilInnerMeshFilter = openmc.MeshFilter(coilMeshInner)
-	coilOuterCellFilter = openmc.CellFilter([14])
-	coilInnerCellFilter = openmc.CellFilter([7])
+	coilOuterCellFilter = openmc.CellFilter(outerCells['coilCellTally'])
+	coilInnerCellFilter = openmc.CellFilter(innerCells['coilCellTally'])
+	coilOuterCellFilter = openmc.CellFilter([outerCells['coils'], outerCells['coilCellTally']])
+	coilInnerCellFilter = openmc.CellFilter([innerCells['coils'], innerCells['coilCellTally']])
 	fastNeutronFilter = openmc.EnergyFilter([0,0.1e6,18e6]) #just picked 18 for fun, anything over 14.1e6 should do
 	neutronFilter = openmc.ParticleFilter(['neutron'])
 	neutronPhotonFilter = openmc.ParticleFilter(['neutron', 'photon'])
 
 	#Fast Flux (outer coils)
 	coilOuterFluxTally = openmc.Tally(name = 'coil outer flux tally')
-	coilOuterFluxTally.filters = [coilOuterMeshFilter, fastNeutronFilter, neutronFilter]
+	coilOuterFluxTally.filters = [coilOuterCellFilter, fastNeutronFilter, neutronFilter]
 	coilOuterFluxTally.scores = ['flux'] #particle-cm/source
 
 	#Fast Flux (Inner coils)
 	coilInnerFluxTally = openmc.Tally(name = 'coil inner flux tally')
-	coilInnerFluxTally.filters = [coilInnerMeshFilter, fastNeutronFilter, neutronFilter]
+	coilInnerFluxTally.filters = [coilInnerCellFilter, fastNeutronFilter, neutronFilter]
 	coilInnerFluxTally.scores = ['flux'] #particle-cm/source
 
 	#heating peak outer
-	coilOuterHeatingMeshTally = openmc.Tally(name = 'coil outer heating mesh tally')
-	coilOuterHeatingMeshTally.filters = [coilOuterMeshFilter, neutronPhotonFilter]
-	coilOuterHeatingMeshTally.scores = ['heating'] #eV/source
+	coilOuterHeatingPeakTally = openmc.Tally(name = 'coil outer heating mesh tally')
+	coilOuterHeatingPeakTally.filters = [coilOuterCellFilter, neutronPhotonFilter]
+	coilOuterHeatingPeakTally.scores = ['heating'] #eV/source
 
 	#heating peak Inner
-	coilInnerHeatingMeshTally = openmc.Tally(name = 'coil inner heating mesh tally')
-	coilInnerHeatingMeshTally.filters = [coilInnerMeshFilter, neutronPhotonFilter]
-	coilInnerHeatingMeshTally.scores = ['heating'] #eV/source
+	coilInnerHeatingPeakTally = openmc.Tally(name = 'coil inner heating mesh tally')
+	coilInnerHeatingPeakTally.filters = [coilInnerCellFilter, neutronPhotonFilter]
+	coilInnerHeatingPeakTally.scores = ['heating'] #eV/source
 
 	#heating total Outer
 	coilOuterHeatingCellTally = openmc.Tally(name ='coil outer heating cell tally')
@@ -307,8 +238,8 @@ def main():
 		                    vvInnerHetally,
 		                    coilOuterFluxTally,
 		                    coilInnerFluxTally,
-		                    coilOuterHeatingMeshTally,
-		                    coilInnerHeatingMeshTally,
+		                    coilOuterHeatingPeakTally,
+		                    coilInnerHeatingPeakTally,
 		                    coilOuterHeatingCellTally,
 		                    coilInnerHeatingCellTally
 		                    ])
