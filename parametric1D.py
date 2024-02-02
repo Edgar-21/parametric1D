@@ -1,3 +1,5 @@
+import openmc
+
 def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart, outerRadialBuildStart, height):
     #build dict {'layer_name' : {'thickness': float, 'material': openmc material}}
     #define surfaces
@@ -72,7 +74,7 @@ def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart,
 
     geometry = openmc.Geometry(cells)
 
-    return geometry
+    return geometry, innerCells, outerCells
     
 def main():
 	materials = openmc.Materials.from_xml('materials.xml')
@@ -166,7 +168,7 @@ def main():
 
 	################### VV tallies ############################
 	vvOuterCellFilter = openmc.CellFilter(outerCells['vvCellTally'])
-	vvInnerCellFilter = openmc.MeshFilter(innerCells['vvCellTally'])
+	vvInnerCellFilter = openmc.CellFilter(innerCells['vvCellTally'])
 
 	#Outer vv DPA
 	vvOuterDPAtally = openmc.Tally(name="vv outer dpa tally")
