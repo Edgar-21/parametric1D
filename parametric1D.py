@@ -1,81 +1,129 @@
 import openmc
 
-def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart, outerRadialBuildStart, height):
-    #build dict {'layer_name' : {'thickness': float, 'material': openmc material}}
-    #define surfaces
-    top = openmc.ZPlane(z0=height/2, boundary_type='periodic', surface_id = 10001)
-    bottom = openmc.ZPlane(z0=-height/2, boundary_type='periodic', surface_id=10002)
+def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart, outerRadialBuildStart, height, NWL=False):
+	#build dict {'layer_name' : {'thickness': float, 'material': openmc material}}
+	#define surfaces
+	top = openmc.ZPlane(z0=height/2, boundary_type='periodic', surface_id = 10001)
+	bottom = openmc.ZPlane(z0=-height/2, boundary_type='periodic', surface_id=10002)
+	if not NWL:
+		#build the inboard side surfaces
+		innerSurfaces = {}
+		offset = innerRadialBuildStart
+		for key, value in innerBuildDict.items():
+			innerSurfaces[key] = openmc.ZCylinder(r=offset)
+			offset -= value['thickness']
 
-    #build the inboard side surfaces
-    innerSurfaces = {}
-    offset = innerRadialBuildStart
-    for key, value in innerBuildDict.items():
-        innerSurfaces[key] = openmc.ZCylinder(r=offset)
-        offset -= value['thickness']
+		innermostSurface = openmc.ZCylinder(r=offset)
 
-    innermostSurface = openmc.ZCylinder(r=offset)
+		#build the inboard side regions
+		innerRegions = {}
+		surfList = list(innerSurfaces.keys())
+		for i in range(len(surfList)):
+			if i != len(surfList)-1:
+				innerRegions[surfList[i]] = -top & +bottom & -innerSurfaces[surfList[i]] & +innerSurfaces[surfList[i+1]]
+			else:
+				innerRegions[surfList[i]] = -top & +bottom & -innerSurfaces[surfList[i]] & +innermostSurface
 
-    #build the inboard side regions
-    innerRegions = {}
-    surfList = list(innerSurfaces.keys())
-    for i in range(len(surfList)):
-        if i != len(surfList)-1:
-            innerRegions[surfList[i]] = -top & +bottom & -innerSurfaces[surfList[i]] & +innerSurfaces[surfList[i+1]]
-        else:
-            innerRegions[surfList[i]] = -top & +bottom & -innerSurfaces[surfList[i]] & +innermostSurface
+		centralVoid = -innermostSurface & +bottom & -top
 
-    centralVoid = -innermostSurface & +bottom & -top
+		#build the inboard side cells
+		innerCells = {}
+		for key, value in innerBuildDict.items():
+			if value['material'] == 'vacuum':
+				innerCells[key] = openmc.Cell(region=innerRegions[key], name = key + ' inner',cell_id=innerBuildDict[key]['cell_id'])
+			else:
+				innerCells[key] = openmc.Cell(region=innerRegions[key], name = key + ' inner', fill = innerBuildDict[key]['material'],cell_id=innerBuildDict[key]['cell_id'])
 
-    #build the inboard side cells
-    innerCells = {}
-    for key, value in innerBuildDict.items():
-        if value['material'] == 'vacuum':
-            innerCells[key] = openmc.Cell(region=innerRegions[key], name = key + ' inner',cell_id=innerBuildDict[key]['cell_id'])
-        else:
-            innerCells[key] = openmc.Cell(region=innerRegions[key], name = key + ' inner', fill = innerBuildDict[key]['material'],cell_id=innerBuildDict[key]['cell_id'])
+		innerCells['central_void'] = openmc.Cell(region=centralVoid,cell_id=10000, name='central void')
+		innerCellList = list(innerCells.values())
 
-    innerCells['central_void'] = openmc.Cell(region=centralVoid,cell_id=10000, name='central void')
-    innerCellList = list(innerCells.values())
+		#build the outboard side surfaces
+		outerSurfaces = {}
+		offset = outerRadialBuildStart
+		for key, value in outerBuildDict.items():
+			outerSurfaces[key] = openmc.ZCylinder(r=offset)
+			offset += value['thickness']
 
-    #build the outboard side surfaces
-    outerSurfaces = {}
-    offset = outerRadialBuildStart
-    for key, value in outerBuildDict.items():
-        outerSurfaces[key] = openmc.ZCylinder(r=offset)
-        offset += value['thickness']
+		outermostSurface = openmc.ZCylinder(r=offset, boundary_type = 'vacuum')
 
-    outermostSurface = openmc.ZCylinder(r=offset, boundary_type = 'vacuum')
+		#build the outboard side regions
+		outerRegions = {}
+		surfList = list(outerSurfaces.keys())
+		for i in range(len(surfList)):
+			if i != len(surfList)-1:
+				outerRegions[surfList[i]] = -top & +bottom & +outerSurfaces[surfList[i]] & -outerSurfaces[surfList[i+1]]
+			else:
+				outerRegions[surfList[i]] = -top & +bottom & +outerSurfaces[surfList[i]] & -outermostSurface
 
-    #build the outboard side regions
-    outerRegions = {}
-    surfList = list(outerSurfaces.keys())
-    for i in range(len(surfList)):
-        if i != len(surfList)-1:
-            outerRegions[surfList[i]] = -top & +bottom & +outerSurfaces[surfList[i]] & -outerSurfaces[surfList[i+1]]
-        else:
-            outerRegions[surfList[i]] = -top & +bottom & +outerSurfaces[surfList[i]] & -outermostSurface
+		#build the outboard side cells
+		outerCells = {}
+		for key, value in outerBuildDict.items():
+			if value['material'] == 'vacuum':
+				outerCells[key] = openmc.Cell(region=outerRegions[key], name = key + ' outer',cell_id=outerBuildDict[key]['cell_id'])
+			else:
+				outerCells[key] = openmc.Cell(region=outerRegions[key], name = key + ' outer', fill = outerBuildDict[key]['material'],cell_id=outerBuildDict[key]['cell_id'])
 
-    #build the outboard side cells
-    outerCells = {}
-    for key, value in outerBuildDict.items():
-        if value['material'] == 'vacuum':
-            outerCells[key] = openmc.Cell(region=outerRegions[key], name = key + ' outer',cell_id=outerBuildDict[key]['cell_id'])
-        else:
-            outerCells[key] = openmc.Cell(region=outerRegions[key], name = key + ' outer', fill = outerBuildDict[key]['material'],cell_id=outerBuildDict[key]['cell_id'])
+		outerCellList = list(outerCells.values())
 
-    outerCellList = list(outerCells.values())
+		#make the plasma cell
+		plasmaRegion = -outerSurfaces['sol'] & +innerSurfaces['sol'] & +bottom & -top
+		plasmaCell = openmc.Cell(region=plasmaRegion, name = 'plasma cell', cell_id=10001)
+		
+		cells = outerCellList + innerCellList
+		cells.append(plasmaCell)
 
-    #make the plasma cell
-    plasmaRegion = -outerSurfaces['sol'] & +innerSurfaces['sol'] & +bottom & -top
-    plasmaCell = openmc.Cell(region=plasmaRegion, name = 'plasma cell', cell_id=10001)
-    
-    cells = outerCellList + innerCellList
-    cells.append(plasmaCell)
+		geometry = openmc.Geometry(cells)
 
-    geometry = openmc.Geometry(cells)
+		return geometry, innerCells, outerCells
+	else:
+		#build the inboard side surfaces/regions
+		innerSurfaces = {}
+		offset = innerRadialBuildStart
+		i = 0
+		for key, value in innerBuildDict.items():
+			if i > 2:
+				innerSurfaces[key] = openmc.ZCylinder(r=offset)
+				offset -= value['thickness']
+				i+=1
+			else:
+				innerSurfaces[key] = openmc.ZCylinder(r=offset, boundary_type = 'vacuum', surface_id = 10003)
+				break
 
-    return geometry, innerCells, outerCells
-    
+		innerSurfacesList = list(innerSurfaces.values())
+
+		innerSOLregion = -top & -bottom & -innerSurfacesList[0] & + innerSurfacesList[1]
+
+		#build the outboard side surfaces/regions
+		outerSurfaces = {}
+		offset = outerRadialBuildStart
+		i = 0
+		for key, value in outerBuildDict.items():
+			if i > 2:
+				outerSurfaces[key] = openmc.ZCylinder(r=offset)
+				offset += value['thickness']
+				i+=1
+			else:
+				outerSurfaces[key] = openmc.ZCylinder(r=offset, boundary_type = 'vacuum', surface_id = 10004)
+				break
+
+		outerSurfacesList = list(outerSurfaces.values())
+
+		outerSOLregion = -top & -bottom & +outerSurfacesList[0] & -outerSurfacesList[1]
+
+		plasmaRegion = -top & -bottom & +innerSurfacesList[0] & -outerSurfacesList[1]
+
+		#make the cells
+		innerSOLCell = openmc.Cell(region=innerSOLregion)
+		outerSOLCell = openmc.Cell(region=outerSOLregion)
+		plasmaCell = openmc.Cell(region=plasmaRegion)
+
+		cellDict = {'innerSOLcell': innerSOLCell, 'outerSOLcell': outerSOLCell, "plasmaCell":plasmaCell}
+
+		geometry = openmc.Geometry([innerSOLCell, plasmaCell, outerSOLCell])
+
+		return geometry, cellDict
+			
+	
 def main():
 	materials = openmc.Materials.from_xml('materials.xml')
 	vacVesselMat = materials[1]
@@ -84,10 +132,10 @@ def main():
 	hts = materials[0]
 
 	mat_dict = {
-		    'fw':fwMat,
-		    'vac_vessel':vacVesselMat,
-		    'coils':coilMat
-		    }
+			'fw':fwMat,
+			'vac_vessel':vacVesselMat,
+			'coils':coilMat
+			}
 
 
 
@@ -99,30 +147,30 @@ def main():
 	plasmaRadius = 800
 
 	innerBuildDict = {
-		            "sol":{'thickness':5,'material':'vacuum','cell_id':1},
-		            "fwCellTally":{'thickness':1,'material': fwMat,'cell_id':2},
-		            "fw":{'thickness':4,'material': fwMat,'cell_id':3},
-		            "hts":{'thickness':5, 'material':hts,'cell_id':4},
-		            "gap1":{'thickness':4,'material':'vacuum','cell_id':5},
-		            "vvCellTally":{'thickness':1,'material':vacVesselMat,'cell_id':6},
-		            "vv":{'thickness':9,'material':vacVesselMat,'cell_id':7},
-		            "gap2":{'thickness':46,'material':'vacuum','cell_id':8},
-		            "coilCellTally":{'thickness':1,'material':coilMat,'cell_id':9},
-		            "coils":{'thickness':51,'material':coilMat,'cell_id':10}
-		            }
+					"sol":{'thickness':5,'material':'vacuum','cell_id':1},
+					"fwCellTally":{'thickness':1,'material': fwMat,'cell_id':2},
+					"fw":{'thickness':4,'material': fwMat,'cell_id':3},
+					"hts":{'thickness':5, 'material':hts,'cell_id':4},
+					"gap1":{'thickness':4,'material':'vacuum','cell_id':5},
+					"vvCellTally":{'thickness':1,'material':vacVesselMat,'cell_id':6},
+					"vv":{'thickness':9,'material':vacVesselMat,'cell_id':7},
+					"gap2":{'thickness':46,'material':'vacuum','cell_id':8},
+					"coilCellTally":{'thickness':1,'material':coilMat,'cell_id':9},
+					"coils":{'thickness':51,'material':coilMat,'cell_id':10}
+					}
 
 	outerBuildDict = {
-		            "sol":{'thickness':5,'material':'vacuum','cell_id':11},
-		            "fwCellTally":{'thickness':1,'material': fwMat,'cell_id':12},
-		            "fw":{'thickness':4,'material': fwMat,'cell_id':13},
-		            "hts":{'thickness':5, 'material':hts,'cell_id':14},
-		            "gap1":{'thickness':4,'material':'vacuum','cell_id':15},
-		            "vvCellTally":{'thickness':1,'material':vacVesselMat,'cell_id':16},
-		            "vv":{'thickness':9,'material':vacVesselMat,'cell_id':17},
-		            "gap2":{'thickness':46,'material':'vacuum','cell_id':18},
-		            "coilCellTally":{'thickness':1,'material':coilMat,'cell_id':19},
-		            "coils":{'thickness':51,'material':coilMat,'cell_id':20}
-		            }
+					"sol":{'thickness':5,'material':'vacuum','cell_id':11},
+					"fwCellTally":{'thickness':1,'material': fwMat,'cell_id':12},
+					"fw":{'thickness':4,'material': fwMat,'cell_id':13},
+					"hts":{'thickness':5, 'material':hts,'cell_id':14},
+					"gap1":{'thickness':4,'material':'vacuum','cell_id':15},
+					"vvCellTally":{'thickness':1,'material':vacVesselMat,'cell_id':16},
+					"vv":{'thickness':9,'material':vacVesselMat,'cell_id':17},
+					"gap2":{'thickness':46,'material':'vacuum','cell_id':18},
+					"coilCellTally":{'thickness':1,'material':coilMat,'cell_id':19},
+					"coils":{'thickness':51,'material':coilMat,'cell_id':20}
+					}
 
 	geometry, innerCells, outerCells = buildGeometryFromDict(innerBuildDict, outerBuildDict, 750,850,20)
 
@@ -232,19 +280,19 @@ def main():
 	coilInnerHeatingCellTally.scores = ['heating'] #eV/source
 
 	tallies = openmc.Tallies([
-		                    fwOuterDPAtally,
-		                    fwInnerDPAtally,
-		                    vvOuterDPAtally,
-		                    vvInnerDPAtally,
-		                    vvOuterHetally,
-		                    vvInnerHetally,
-		                    coilOuterFluxTally,
-		                    coilInnerFluxTally,
-		                    coilOuterHeatingPeakTally,
-		                    coilInnerHeatingPeakTally,
-		                    coilOuterHeatingCellTally,
-		                    coilInnerHeatingCellTally
-		                    ])
+							fwOuterDPAtally,
+							fwInnerDPAtally,
+							vvOuterDPAtally,
+							vvInnerDPAtally,
+							vvOuterHetally,
+							vvInnerHetally,
+							coilOuterFluxTally,
+							coilInnerFluxTally,
+							coilOuterHeatingPeakTally,
+							coilInnerHeatingPeakTally,
+							coilOuterHeatingCellTally,
+							coilInnerHeatingCellTally
+							])
 
 	tallies.export_to_xml()
 
