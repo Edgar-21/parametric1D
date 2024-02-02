@@ -91,7 +91,7 @@ def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart,
 
 		innerSurfacesList = list(innerSurfaces.values())
 
-		innerSOLregion = -top & -bottom & -innerSurfacesList[0] & + innerSurfacesList[1]
+		innerSOLregion = -top & +bottom & -innerSurfacesList[0] & + innerSurfacesList[1]
 
 		#build the outboard side surfaces/regions
 		outerSurfaces = {}
@@ -108,9 +108,9 @@ def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart,
 
 		outerSurfacesList = list(outerSurfaces.values())
 
-		outerSOLregion = -top & -bottom & +outerSurfacesList[0] & -outerSurfacesList[1]
+		outerSOLregion = -top & +bottom & +outerSurfacesList[0] & -outerSurfacesList[1]
 
-		plasmaRegion = -top & -bottom & +innerSurfacesList[0] & -outerSurfacesList[1]
+		plasmaRegion = -top & +bottom & +innerSurfacesList[0] & -outerSurfacesList[1]
 
 		#make the cells
 		innerSOLCell = openmc.Cell(region=innerSOLregion)
