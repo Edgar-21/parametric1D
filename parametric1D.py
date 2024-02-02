@@ -81,7 +81,7 @@ def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart,
 		offset = innerRadialBuildStart
 		i = 0
 		for key, value in innerBuildDict.items():
-			if i > 2:
+			if i < 1:
 				innerSurfaces[key] = openmc.ZCylinder(r=offset)
 				offset -= value['thickness']
 				i+=1
@@ -98,7 +98,7 @@ def buildGeometryFromDict(innerBuildDict, outerBuildDict, innerRadialBuildStart,
 		offset = outerRadialBuildStart
 		i = 0
 		for key, value in outerBuildDict.items():
-			if i > 2:
+			if i < 1:
 				outerSurfaces[key] = openmc.ZCylinder(r=offset)
 				offset += value['thickness']
 				i+=1
